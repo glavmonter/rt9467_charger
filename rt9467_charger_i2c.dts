@@ -1,0 +1,16 @@
+/dts-v1/;
+ /plugin/;
+  /{
+    compatible = "rockchip,rk3566-orangepi-cm4";
+ 	fragment@0 {
+ 		target = <&i2c2>;
+ 		__overlay__{
+ 			rt9467-i2c@5b {
+ 				compatible = "richtek,rt9467-i2c";
+ 				reg = <0x5b>;
+ 				status = "okay";
+ 				monitored-battery = <&bat>;
+ 			};
+ 		};
+ 	};
+};
