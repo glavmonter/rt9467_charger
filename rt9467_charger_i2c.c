@@ -31,6 +31,27 @@ static int rt9467_i2c_charger_read(struct rt9467_device_info *di, u8 reg)
 
 static int rt9467_i2c_charger_write(struct rt9467_device_info *di, u8 reg, int value)
 {
+	struct i2c_client *client = to_i2c_client(di->dev);
+	struct i2c_msg msg;
+	u8 data[2];
+
+	int ret;
+	if (!client->adapter)
+		return -ENODEV;
+	
+	data[0] = reg;
+	data[1] = (u8)value;
+
+	msg.addr = client->addr;
+	msg.flags = 0;
+	msg.buf = data;
+	msg.len = 2;
+	
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		return ret;
+	if (ret != 1)
+		return -EINVAL;
 	return 0;
 }
 

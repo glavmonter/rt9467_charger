@@ -7,18 +7,17 @@ struct rt9467_access_methods {
 	int (*write)(struct rt9467_device_info *di, u8 reg, int value);
 };
 
-struct rt9467_reg_cache {
-	int charge_status;
-	int charge_current;
-	int online;
-};
-
 struct rt9467_device_info {
 	struct device *dev;
 	const char *name;
 	struct rt9467_access_methods bus;
-	struct rt9467_reg_cache cache;
+	
+	struct regmap *regmap;
+	struct regmap_field **rm_fields;
 
+	int *cached_registers;
+	bool need_update;
+	
 	unsigned long last_update;
 	struct delayed_work work;
 	struct mutex lock;
