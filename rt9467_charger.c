@@ -70,7 +70,8 @@ enum rt9467_fields {
 	F_CHG_EN,			///< Включение и выключение зарядки, только запись. 0 - отключено, 1 - включено (по умолчанию)
 	F_CFO_EN,			///< Включение и выключение DCDC
 	F_DCDC_EN,			///< Включение и выключение зарядки вообще
-	F_SHIP_MODE,
+	F_SHIP_MODE,		///< Отключение батарейки
+	F_SHIP_FULL_MODE,   ///< Отключение батарейки через 10 секунд
 	F_PWR_RDY,  		///< Состояние подключенного адаптера, только чтение
 	F_ICHG,				///< Ток заряда, чтение - запись
 	F_MAX_FIELDS,
@@ -81,6 +82,7 @@ static const struct reg_field rt9467_rm_fields[] = {
 	[F_CHG_STAT] 		= REG_FIELD(RT9467_REG_CHG_STAT, 6, 7),
 	[F_CHG_EN]			= REG_FIELD(RT9467_REG_CHG_CTRL2, 0, 0),
 	[F_SHIP_MODE]		= REG_FIELD(RT9467_REG_CHG_CTRL2, 7, 7),
+	[F_SHIP_FULL_MODE]	= REG_FIELD(RT9467_REG_CHG_CTRL2, 6, 7),
 	[F_CFO_EN]			= REG_FIELD(RT9467_REG_CHG_CTRL2, 1, 1),
 	[F_DCDC_EN]     	= REG_FIELD(RT9467_REG_CHG_CTRL2, 0, 1),
 	[F_PWR_RDY]			= REG_FIELD(RT9467_REG_CHG_STATC, 7, 7),
@@ -379,11 +381,50 @@ static ssize_t sysoff_enable_store(struct device *dev,
 
 	return count;
 }
-
 static DEVICE_ATTR_RW(sysoff_enable);
+
+
+static ssize_t sysoff_enable_delayed_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return sysfs_emit(buf, "0\n");
+}
+
+static ssize_t sysoff_enable_delayed_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct rt9467_device_info *di = power_supply_get_drvdata(to_power_supply(dev));
+	unsigned int tmp;
+	int ret;
+
+	ret = kstrtouint(buf, 10, &tmp);
+	if (ret)
+		return ret;
+
+	dev_info(di->dev, "sysoff_enable_delayed: %d\n", !!tmp);
+
+	if (!!tmp) {
+		tmp = 3;
+	} else {
+		tmp = 0;
+	}
+
+	mutex_lock(&di->lock);
+	di->need_update = 1;
+	ret = regmap_field_write(di->rm_fields[F_SHIP_FULL_MODE], tmp);
+	mutex_unlock(&di->lock);
+
+	if (ret)
+		return ret;
+
+	return count;
+}
+static DEVICE_ATTR_RW(sysoff_enable_delayed);
 
 static struct attribute *rt9467_sysfs_attrs[] = {
 	&dev_attr_sysoff_enable.attr,
+	&dev_attr_sysoff_enable_delayed.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(rt9467_sysfs);
